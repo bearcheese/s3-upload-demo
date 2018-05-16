@@ -1,83 +1,157 @@
 package com.epam.vercm2.upload.demo;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.io.UnsupportedEncodingException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-
+import com.amazonaws.util.BinaryUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import com.amazonaws.util.BinaryUtils;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+
+import static com.epam.vercm2.upload.demo.ExactValueCondition.exactValueCondition;
+import static com.epam.vercm2.upload.demo.MatchType.STARTS_WITH;
+import static com.epam.vercm2.upload.demo.MatcherCondition.matcherCondition;
+import static java.time.temporal.ChronoField.*;
+import static org.apache.commons.codec.Charsets.UTF_8;
 
 @Controller
 public class MainController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
+    
     private static final String SCHEME = "AWS4";
-
-    private static final String AWS_ACCESS_KEY = "xxx";
-    private static final String AWS_SECRET_KEY = "xxx";
-    private static final String AWS_REGION_NAME = "eu-central-1";
     private static final String AWS_SERVICE_NAME = "s3";
     private static final String TERMINATOR = "aws4_request";
+    private static final String HMAC_SHA_256 = "HmacSHA256";
 
-    private static final String POLICY_TEMPLATE = "{ \n"
-            + "  \"expiration\": \"%s\",\n"
-            + "  \"conditions\": [\n"
-            + "    {\"bucket\": \"formuploaddemobucket\"},\n"
-            + "    [\"starts-with\", \"$key\", \"\"],\n"
-            + "    {\"success_action_redirect\": \"http://localhost:8080\"},"
-            + "    [\"starts-with\", \"$x-amz-meta-tag\", \"\"],\n"
-            + "    {\"x-amz-credential\": \"%s\"},\n"
-            + "    {\"x-amz-algorithm\": \"AWS4-HMAC-SHA256\"},\n"
-            + "    {\"x-amz-date\": \"%s\" }\n"
-            + "  ]\n"
-            + "}";
+    @Value("${aws.accesskey}")
+    private String awsAccessKey;
+
+    @Value("${aws.secret_key}")
+    private String awsSecretKey;
+
+    @Value("${aws.region_name}")
+    private String regionName;
+
+    @Value("${aws.bucket_name}")
+    private String bucketName;
+
+    @Value("${policy.validity_in_seconds}")
+    private long validityInSeconds;
+
+    @Value("${success_action_redirect}")
+    private String successActionRedirect;
+
+    private static final ZoneId UTC = ZoneId.of("UTC");
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @GetMapping("/")
-    public String index(Model model) throws UnsupportedEncodingException {
+    public String index(Model model) throws JsonProcessingException {
+        ZonedDateTime currentTime = LocalDateTime.now().atZone(UTC);
+        String credential = generateCredential(currentTime);
+        String dateString = currentTime.with(LocalTime.MIN).format(BASIC_ISO_DATETIME);
+        String endpointUrl = generateEndpointUrl();
 
-        LocalDateTime currentTime = LocalDateTime.now();
-        LocalDateTime expiresAt = currentTime.plusMinutes(5);
-        String credential = AWS_ACCESS_KEY + "/" + currentTime.format(DateTimeFormatter.BASIC_ISO_DATE) + "/" + AWS_REGION_NAME + "/" + AWS_SERVICE_NAME + "/" + TERMINATOR;
+        Policy policy = generatePolicy(currentTime, validityInSeconds, credential);
+        String rawPolicy = objectMapper.writeValueAsString(policy);
+        LOGGER.info("Raw policy: {}", rawPolicy);
+        String base64EncodedPolicy = BinaryUtils.toBase64(rawPolicy.getBytes(UTF_8));
+        byte[] signature = signBase64EncodedPolicy(currentTime, base64EncodedPolicy);
+
+        model.addAttribute("endpointUrl", endpointUrl);
         model.addAttribute("keyPrefix", RandomStringUtils.randomAlphanumeric(6));
         model.addAttribute("credential", credential);
-        String dateString = currentTime.format(DateTimeFormatter.BASIC_ISO_DATE) + "T000000Z";
         model.addAttribute("date", dateString);
-        String rawPolicy = String.format(POLICY_TEMPLATE, expiresAt.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_INSTANT),
-                credential,
-                dateString);
-        System.out.println(rawPolicy);
-        String base64EncodedPolicy = BinaryUtils.toBase64(rawPolicy
-                .getBytes("UTF-8"));
         model.addAttribute("policy", base64EncodedPolicy);
-
-        // compute the signing key
-        byte[] kSecret = (SCHEME + AWS_SECRET_KEY).getBytes();
-        byte[] kDate = sign(currentTime.format(DateTimeFormatter.BASIC_ISO_DATE), kSecret, "HmacSHA256");
-        byte[] kRegion = sign(AWS_REGION_NAME, kDate, "HmacSHA256");
-        byte[] kService = sign(AWS_SERVICE_NAME, kRegion, "HmacSHA256");
-        byte[] kSigning = sign(TERMINATOR, kService, "HmacSHA256");
-        byte[] signature = sign(base64EncodedPolicy, kSigning, "HmacSHA256");
-
         model.addAttribute("signature", BinaryUtils.toHex(signature));
 
         return "index";
     }
 
-    private static byte[] sign(String stringData, byte[] key, String algorithm) {
+    private String generateEndpointUrl() {
+        String endpointUrl;
+        if (regionName.equals("us-east-1")) {
+            endpointUrl = "https://s3.amazonaws.com/" + bucketName;
+        } else {
+            endpointUrl = "https://s3-" + regionName + ".amazonaws.com/" + bucketName;
+        }
+        return endpointUrl;
+    }
+
+    private byte[] signBase64EncodedPolicy(ZonedDateTime currentTime, String base64EncodedPolicy) {
+        // compute the signing key
+        byte[] kSecret = (SCHEME + awsSecretKey).getBytes();
+        byte[] kDate = sign(currentTime.format(BASIC_ISO_DATE), kSecret);
+        byte[] kRegion = sign(regionName, kDate);
+        byte[] kService = sign(AWS_SERVICE_NAME, kRegion);
+        byte[] kSigning = sign(TERMINATOR, kService);
+        return sign(base64EncodedPolicy, kSigning);
+    }
+
+    private String generateCredential(ZonedDateTime currentTime) {
+        return awsAccessKey + "/" + currentTime.format(BASIC_ISO_DATE) + "/" + regionName + "/" + AWS_SERVICE_NAME + "/" + TERMINATOR;
+    }
+
+    private Policy generatePolicy(ZonedDateTime issuedAt, long validityInSeconds, String credential) {
+        Policy policy = new Policy();
+
+        ZonedDateTime expiresAt = issuedAt.plusSeconds(validityInSeconds);
+        String dateString = issuedAt.with(LocalTime.MIN).format(BASIC_ISO_DATETIME);
+
+        policy.setExpiration(expiresAt);
+        policy.addCondition(exactValueCondition("bucket", bucketName));
+        policy.addCondition(matcherCondition(STARTS_WITH, "$key", ""));
+        policy.addCondition(exactValueCondition("success_action_redirect", successActionRedirect));
+        policy.addCondition(matcherCondition(STARTS_WITH, "$x-amz-meta-tag", ""));
+        policy.addCondition(exactValueCondition("x-amz-credential", credential));
+        policy.addCondition(exactValueCondition("x-amz-algorithm", "AWS4-HMAC-SHA256"));
+        policy.addCondition(exactValueCondition("x-amz-date", dateString));
+        return policy;
+    }
+
+    private static byte[] sign(String stringData, byte[] key) {
         try {
-            byte[] data = stringData.getBytes("UTF-8");
-            Mac mac = Mac.getInstance(algorithm);
-            mac.init(new SecretKeySpec(key, algorithm));
+            byte[] data = stringData.getBytes(UTF_8);
+            Mac mac = Mac.getInstance(HMAC_SHA_256);
+            mac.init(new SecretKeySpec(key, HMAC_SHA_256));
             return mac.doFinal(data);
         } catch (Exception e) {
             throw new RuntimeException("Unable to calculate a request signature: " + e.getMessage(), e);
         }
     }
+
+    private static final DateTimeFormatter BASIC_ISO_DATETIME = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendValue(YEAR, 4)
+            .appendValue(MONTH_OF_YEAR, 2)
+            .appendValue(DAY_OF_MONTH, 2)
+            .appendLiteral("T")
+            .appendValue(HOUR_OF_DAY, 2)
+            .appendValue(MINUTE_OF_HOUR, 2)
+            .appendValue(SECOND_OF_MINUTE, 2)
+            .appendOffset("+HHMMss", "Z")
+            .toFormatter();
+
+    private static final DateTimeFormatter BASIC_ISO_DATE = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendValue(YEAR, 4)
+            .appendValue(MONTH_OF_YEAR, 2)
+            .appendValue(DAY_OF_MONTH, 2)
+            .toFormatter();
 
 }

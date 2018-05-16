@@ -2,42 +2,33 @@ package com.epam.vercm2.upload.demo;
 
 public class MatcherCondition extends Condition {
 
-    private String type;
+    private MatchType type;
     private String attribute;
     private String pattern;
 
-    public MatcherCondition() {
+    private MatcherCondition() {
     }
 
-    public MatcherCondition(String type, String attribute, String pattern) {
+    private MatcherCondition(MatchType type, String attribute, String pattern) {
         this.type = type;
         this.attribute = attribute;
         this.pattern = pattern;
     }
 
-    public String getType() {
+    public MatchType getType() {
         return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public String getAttribute() {
         return attribute;
     }
 
-    public void setAttribute(String attribute) {
-        this.attribute = attribute;
-    }
-
     public String getPattern() {
         return pattern;
     }
 
-    public void setPattern(String pattern) {
-        this.pattern = pattern;
+    public static MatcherCondition matcherCondition(MatchType type, String attribute, String pattern) {
+        return new MatcherCondition(type, attribute, pattern);
     }
-
 
 }

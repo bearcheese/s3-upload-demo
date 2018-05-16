@@ -5,10 +5,10 @@ public class ExactValueCondition extends Condition {
     private String attribute;
     private String value;
 
-    public ExactValueCondition() {
+    private ExactValueCondition() {
     }
 
-    public ExactValueCondition(String attribute, String value) {
+    private ExactValueCondition(String attribute, String value) {
         this.attribute = attribute;
         this.value = value;
     }
@@ -17,15 +17,11 @@ public class ExactValueCondition extends Condition {
         return attribute;
     }
 
-    public void setAttribute(String attribute) {
-        this.attribute = attribute;
-    }
-
     public String getValue() {
         return value;
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public static ExactValueCondition exactValueCondition(String attribute, String value) {
+        return new ExactValueCondition(attribute, value);
     }
 }

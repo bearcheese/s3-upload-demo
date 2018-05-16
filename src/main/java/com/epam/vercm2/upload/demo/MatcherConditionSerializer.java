@@ -13,7 +13,7 @@ public class MatcherConditionSerializer extends JsonSerializer<MatcherCondition>
     public void serialize(MatcherCondition condition, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
         jsonGenerator.writeStartArray();
 
-        jsonGenerator.writeString(condition.getType());
+        jsonGenerator.writeString(condition.getType().type);
         jsonGenerator.writeString(condition.getAttribute());
         jsonGenerator.writeString(condition.getPattern());
 

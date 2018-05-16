@@ -1,9 +1,0 @@
-{
-  "expiration": "%s",
-  "conditions": [
-    {"bucket": "formuploaddemobucket"},
-    {"x-amz-credential": "%s"},
-    {"x-amz-algorithm": "AWS4-HMAC-SHA256"},
-    {"x-amz-date": "%s" }
-  ]
-}
