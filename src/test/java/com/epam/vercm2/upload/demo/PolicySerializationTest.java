@@ -1,5 +1,6 @@
 package com.epam.vercm2.upload.demo;
 
+import com.epam.vercm2.upload.demo.model.Policy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;
@@ -12,9 +13,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
-import static com.epam.vercm2.upload.demo.ExactValueCondition.exactValueCondition;
-import static com.epam.vercm2.upload.demo.MatchType.STARTS_WITH;
-import static com.epam.vercm2.upload.demo.MatcherCondition.matcherCondition;
+import static com.epam.vercm2.upload.demo.model.ExactValueCondition.exactValueCondition;
+import static com.epam.vercm2.upload.demo.model.MatchType.STARTS_WITH;
+import static com.epam.vercm2.upload.demo.model.MatcherCondition.matcherCondition;
 
 @JsonTest
 @RunWith(SpringRunner.class)

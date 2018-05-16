@@ -1,6 +1,7 @@
 package com.epam.vercm2.upload.demo;
 
 import com.amazonaws.util.BinaryUtils;
+import com.epam.vercm2.upload.demo.model.Policy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -21,9 +22,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 
-import static com.epam.vercm2.upload.demo.ExactValueCondition.exactValueCondition;
-import static com.epam.vercm2.upload.demo.MatchType.STARTS_WITH;
-import static com.epam.vercm2.upload.demo.MatcherCondition.matcherCondition;
+import static com.epam.vercm2.upload.demo.model.ExactValueCondition.exactValueCondition;
+import static com.epam.vercm2.upload.demo.model.MatchType.STARTS_WITH;
+import static com.epam.vercm2.upload.demo.model.MatcherCondition.matcherCondition;
 import static java.time.temporal.ChronoField.*;
 import static org.apache.commons.codec.Charsets.UTF_8;
 

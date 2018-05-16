@@ -1,4 +1,4 @@
-package com.epam.vercm2.upload.demo;
+package com.epam.vercm2.upload.demo.model;
 
 public enum MatchType {
 

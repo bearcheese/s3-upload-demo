@@ -1,9 +1,10 @@
-package com.epam.vercm2.upload.demo;
+package com.epam.vercm2.upload.demo.model;
+
+import com.epam.vercm2.upload.demo.model.Condition;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class Policy {
 

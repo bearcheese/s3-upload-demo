@@ -1,5 +1,6 @@
-package com.epam.vercm2.upload.demo;
+package com.epam.vercm2.upload.demo.serializers;
 
+import com.epam.vercm2.upload.demo.model.MatcherCondition;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
