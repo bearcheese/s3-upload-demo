@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>S3 Upload demo</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<!--form action="http://formuploaddemobucket.s3.amazonaws.com/" method="post" enctype="multipart/form-data"-->
+<form th:action="${endpointUrl}" method="post" enctype="multipart/form-data">
+    Key to upload:
+    <input type="input"  name="key" th:value="${keyPrefix} + '-${filename}'" /><br />
+    <input type="hidden" name="X-Amz-Credential" th:value="${credential}" />
+    <input type="hidden" name="X-Amz-Algorithm" value="AWS4-HMAC-SHA256" />
+    <input type="hidden" name="X-Amz-Date" th:value="${date}" />
+    <input type="hidden" name="success_action_redirect" value="http://localhost:8080" />
+
+    Tags for File:
+    <input type="input"  name="x-amz-meta-tag" value="" /><br />
+    <input type="hidden" name="Policy" th:value="${policy}" />
+    <input type="hidden" name="X-Amz-Signature" th:value="${signature}" />
+    File:
+    <input type="file"   name="file" /> <br />
+    <!-- The elements after this will be ignored -->
+    <input type="submit" name="submit" value="Upload to Amazon S3" />
+</form>
+</body>
+</html>

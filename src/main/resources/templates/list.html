@@ -1,0 +1,36 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>S3 Upload demo</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<div id="solution-list">
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Key</th>
+            <th>ETag</th>
+            <th>Size</th>
+            <th>Last modified</th>
+            <th>Storage class</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="obj : ${objects}">
+            <td th:text="${objStat.count}"></td>
+            <td><a th:text="${obj.key}" th:href="@{/signedurl(objectKey=${obj.key})}">Download</a></td>
+            <td th:text="${obj.eTag}"></td>
+            <td th:text="${obj.size} + ' B'"></td>
+            <td th:text="${obj.lastModified}"></td>
+            <td th:text="${obj.storageClass}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<div>
+    <a th:href="@{/upload}">Upload files</a>
+</div>
+</body>
+</html>
